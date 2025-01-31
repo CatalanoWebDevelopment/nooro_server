@@ -1,21 +1,42 @@
 import { Request, Response } from "express";
 import { PrismaClient } from "@prisma/client";
 import { Task } from "../types/Task";
+import Fuse from "fuse.js";
 
 const prisma = new PrismaClient();
+
+// GET /tasks/search/:query
+export const searchTasks = async (req: Request, res: Response) => {
+  try {
+    const { query } = req.params;
+    
+    const fuseOptions = {
+      keys: ["title"],
+    };
+
+    const allTasks = await prisma.task.findMany();
+    const fuse = new Fuse(allTasks, fuseOptions);
+
+    const tasks = fuse.search(query)?.map((result) => result.item);
+
+    res.json(tasks ?? null);
+  } catch (error) {
+    res.status(500).json({ error: "Failed to search tasks" });
+  }
+};
 
 // GET /tasks
 export const getTasks = async (req: Request, res: Response) => {
   try {
     const tasks = await prisma.task.findMany();
-    
+
     res.json(tasks);
   } catch (error) {
     res.status(500).json({ error: "Failed to fetch tasks" });
   }
 };
 
-// Get /tasks/:id
+// GET /tasks/:id
 export const getTask = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -32,7 +53,7 @@ export const getTask = async (req: Request, res: Response) => {
   } catch (error) {
     res.status(500).json({ error: "Failed to fetch task" });
   }
-}
+};
 
 // POST /tasks
 export const createTask = async (req: Request, res: Response) => {
@@ -49,7 +70,7 @@ export const createTask = async (req: Request, res: Response) => {
         color,
       },
     });
-    
+
     res.status(201).json(newTask);
   } catch (error) {
     res.status(500).json({ error: "Failed to create task" });
